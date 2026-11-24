@@ -130,4 +130,4 @@ drop policy if exists feed_doctor_write on public.clinic_feed;
 create policy feed_doctor_write on public.clinic_feed for all using (public.is_doctor()) with check (public.is_doctor());
 
 -- After the first sign-up, promote the doctor's auth UUID explicitly:
--- update public.profiles set role='doctor', status='approved' where email='doctor@drminasoliman.com';
+-- update public.profiles set role='doctor', status='approved' where email='minasherif@windowslive.com';
