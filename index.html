@@ -2270,7 +2270,7 @@
           <div style="font-size:0.74rem; color:var(--text-muted); margin-bottom:8px; text-align:center;">
             Need urgent psychiatric support?
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <div style="display:grid; grid-template-columns:minmax(220px, 360px); justify-content:center; gap:8px;">
             <a href="https://wa.me/201026281035" target="_blank" rel="noopener" class="contact-action-btn emergency-btn" data-wa-url="https://wa.me/201026281035" style="padding:9px 8px; font-size:0.76rem;">
               🚨 Emergency
             </a>
@@ -4564,7 +4564,35 @@
     /*************************************************************************
      * 7. NAVIGATION & INITIALIZATION
      *************************************************************************/
-    function switchTab(tabId) {
+    const PORTAL_ROUTES = {
+      "/": "tab-wheel",
+      "/patient": "tab-wheel",
+      "/meditation": "tab-meditation",
+      "/history": "tab-history",
+      "/feed": "tab-feed",
+      "/care": "tab-care",
+      "/admin_panel": "tab-doctor"
+    };
+    const TAB_ROUTES = Object.fromEntries(Object.entries(PORTAL_ROUTES).map(([path, tab]) => [tab, path]));
+
+    function setNavigationForRole(role) {
+      const patientNavIds = ["nav-btn-wheel", "nav-btn-meditation", "nav-btn-history", "nav-btn-feed", "nav-btn-care"];
+      patientNavIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = role === "doctor" ? "none" : "flex";
+      });
+      const doctorNav = document.getElementById("nav-btn-doctor");
+      if (doctorNav) doctorNav.style.display = role === "doctor" ? "flex" : "none";
+    }
+
+    function resolveRoute() {
+      return PORTAL_ROUTES[window.location.pathname.replace(/\/+$/, "") || "/"] || (portalSession?.user?.role === "doctor" ? "tab-doctor" : "tab-wheel");
+    }
+
+    function switchTab(tabId, options = {}) {
+      const isDoctor = portalSession && portalSession.user && portalSession.user.role === "doctor";
+      if (tabId === "tab-doctor" && !isDoctor) tabId = "tab-wheel";
+      if (isDoctor && tabId !== "tab-doctor") tabId = "tab-doctor";
       document.querySelectorAll(".tab-pane").forEach(p => {
         p.classList.toggle("active", p.id === tabId);
       });
@@ -4578,8 +4606,13 @@
       } else if (tabId === "tab-care" && typeof refreshPatientCarePortal === "function") {
         refreshPatientCarePortal(false);
       }
+      const route = TAB_ROUTES[tabId] || (isDoctor ? "/admin_panel" : "/patient");
+      if (options.replaceUrl) window.history.replaceState({ tabId }, "", route);
+      else if (options.updateUrl !== false && window.location.pathname !== route) window.history.pushState({ tabId }, "", route);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+
+    window.addEventListener("popstate", () => switchTab(resolveRoute(), { updateUrl: false }));
 
     function applyTheme() {
       const isDark = appState.theme === "dark";
@@ -5783,7 +5816,7 @@
           roleEl.textContent = "🩺 Doctor Admin";
           roleEl.className = "role-badge doctor";
         }
-        if (docNavBtn) docNavBtn.style.display = "flex";
+        setNavigationForRole("doctor");
         if (docShortcutBtn) docShortcutBtn.style.display = "inline-flex";
         if (feedDocComposeBtn) feedDocComposeBtn.style.display = "inline-flex";
         if (patChanRedirect) patChanRedirect.style.display = "block";
@@ -5794,19 +5827,20 @@
         }
         if (typeof refreshDoctorAdminAll === "function") refreshDoctorAdminAll(false);
         if (typeof refreshClinicFeed === "function") refreshClinicFeed(false, false);
-        switchTab("tab-doctor");
+        switchTab("tab-doctor", { replaceUrl: true });
       } else {
         if (roleEl) {
           roleEl.textContent = "✓ Approved Patient";
           roleEl.className = "role-badge";
         }
-        if (docNavBtn) docNavBtn.style.display = "none";
+        setNavigationForRole("patient");
         if (docShortcutBtn) docShortcutBtn.style.display = "none";
         if (feedDocComposeBtn) feedDocComposeBtn.style.display = "none";
         if (patChanRedirect) patChanRedirect.style.display = "none";
         if (patChanBox) patChanBox.style.display = "block";
         if (typeof refreshPatientAllPortalFeatures === "function") refreshPatientAllPortalFeatures(false);
-        switchTab("tab-wheel");
+        const requestedTab = resolveRoute();
+        switchTab(requestedTab === "tab-doctor" ? "tab-wheel" : requestedTab, { replaceUrl: true });
       }
 
       if (typeof startPortalAutoRefresh === "function") startPortalAutoRefresh();

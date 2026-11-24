@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/patient", "destination": "/index.html" },
+    { "source": "/meditation", "destination": "/index.html" },
+    { "source": "/history", "destination": "/index.html" },
+    { "source": "/feed", "destination": "/index.html" },
+    { "source": "/care", "destination": "/index.html" },
+    { "source": "/admin_panel", "destination": "/index.html" }
+  ]
+}

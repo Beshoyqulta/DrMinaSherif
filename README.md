@@ -26,6 +26,8 @@ The Vercel site is the patient-facing web app. The `backend/` folder is a FastAP
 
 The backend exposes `/api/me`, `/api/slots`, `/api/bookings`, `/api/messages/{patient_id}`, and `/api/feed`. Booking creation uses a database function and a unique active-booking index, so simultaneous requests cannot reserve the same slot. Email notifications are sent for approval, doctor messages, clinic broadcasts, and appointment status changes. If `RESEND_API_KEY` is absent, the service remains usable but skips email delivery.
 
+The Vercel frontend uses browser routes for the main pages: `/patient`, `/meditation`, `/history`, `/feed`, `/care`, and `/admin_panel`. Doctor sessions are restricted to `/admin_panel`; patient navigation is hidden from the doctor view. Vercel serves these routes through `vercel.json` rewrites.
+
 ## Static hosting
 1. Upload the contents of this folder onto **Netlify Drop**, **Cloudflare Pages**, **Vercel**, or **GitHub Pages**.
 2. Share your HTTPS link with patients via WhatsApp.
