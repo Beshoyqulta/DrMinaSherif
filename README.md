@@ -16,6 +16,7 @@ The Netlify site is the patient-facing web app. The `backend/` folder is a FastA
 ## Production setup
 1. Create a Supabase project and run [`supabase-setup.sql`](supabase-setup.sql) in the SQL Editor.
 2. Configure Supabase Authentication for the Netlify site URL.
+   Add the Netlify URL to the Supabase Redirect URLs as well; this is where password-reset links return.
 3. Create the doctor's account, then run the promotion statement at the end of `supabase-setup.sql`.
 4. Deploy `backend/` to Render using [`render.yaml`](render.yaml). Set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `ALLOWED_ORIGINS`. Never put the service-role key in Netlify or browser code.
 5. Create a [Resend](https://resend.com) API key, verify the sender domain, and set `RESEND_API_KEY`, `FROM_EMAIL`, `APP_URL`, and `SUPABASE_WEBHOOK_SECRET` on Render.

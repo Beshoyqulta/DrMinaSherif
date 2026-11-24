@@ -2196,6 +2196,23 @@
             <button type="submit" id="btn-signin-submit" class="primary-btn" style="width:100%; margin-top:6px;">
               Sign In to Sanctuary
             </button>
+            <button type="button" id="btn-forgot-password" class="secondary-btn" style="width:100%; margin-top:8px;">Forgot password?</button>
+          </form>
+
+          <form id="portal-forgot-form" style="display:none;" autocomplete="on">
+            <h2 style="margin:0 0 6px; font-family:var(--font-serif); font-size:1.2rem;">Reset your password</h2>
+            <p style="margin:0 0 14px; color:var(--text-secondary); font-size:0.82rem;">Enter your account email and we’ll send you a secure password-reset link.</p>
+            <div class="portal-field"><label for="forgot-email">Email Address</label><input id="forgot-email" type="email" class="portal-input" placeholder="patient@example.com" required autocomplete="email" /></div>
+            <button type="submit" id="btn-forgot-submit" class="primary-btn" style="width:100%;">Send Reset Email</button>
+            <button type="button" id="btn-forgot-back" class="secondary-btn" style="width:100%; margin-top:8px;">Back to Sign In</button>
+          </form>
+
+          <form id="portal-reset-form" style="display:none;" autocomplete="on">
+            <h2 style="margin:0 0 6px; font-family:var(--font-serif); font-size:1.2rem;">Choose a new password</h2>
+            <p style="margin:0 0 14px; color:var(--text-secondary); font-size:0.82rem;">Create a new password for your patient portal account.</p>
+            <div class="portal-field"><label for="reset-password">New Password</label><input id="reset-password" type="password" class="portal-input" minlength="6" required autocomplete="new-password" /></div>
+            <div class="portal-field"><label for="reset-password-confirm">Confirm New Password</label><input id="reset-password-confirm" type="password" class="portal-input" minlength="6" required autocomplete="new-password" /></div>
+            <button type="submit" id="btn-reset-submit" class="primary-btn" style="width:100%;">Update Password</button>
           </form>
 
           <form id="portal-signup-form" style="display:none;" autocomplete="on">
@@ -5559,6 +5576,28 @@
       return sess;
     }
 
+    function getRecoveryAccessToken() {
+      const hash = new URLSearchParams(String(window.location.hash || "").replace(/^#/, ""));
+      return hash.get("access_token") || "";
+    }
+
+    async function portalRequestPasswordReset(email) {
+      const cfg = getPortalConfig();
+      if (cfg.mode !== "cloud") throw new Error("Password reset requires Supabase Cloud mode.");
+      const redirectTo = `${window.location.origin}${window.location.pathname}`;
+      const res = await portalHttp("POST", `${cfg.supabaseUrl}/auth/v1/recover`, supabaseAuthHeaders(cfg, null), { email: email.trim().toLowerCase(), redirect_to: redirectTo });
+      if (!res.ok) throw new Error(extractApiError(res, "Unable to send password reset email."));
+    }
+
+    async function portalUpdatePassword(password) {
+      const cfg = getPortalConfig();
+      const token = getRecoveryAccessToken();
+      if (cfg.mode !== "cloud" || !token) throw new Error("This password reset link is invalid or expired. Please request a new one.");
+      const res = await portalHttp("PUT", `${cfg.supabaseUrl}/auth/v1/user`, supabaseAuthHeaders(cfg, token), { password });
+      if (!res.ok) throw new Error(extractApiError(res, "Unable to update your password."));
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    }
+
     async function refreshMyProfile() {
       if (!portalSession || !portalSession.user) return null;
       const cfg = getPortalConfig();
@@ -7471,6 +7510,8 @@
       const tabSignUp = document.getElementById("tab-btn-signup");
       const formSignIn = document.getElementById("portal-signin-form");
       const formSignUp = document.getElementById("portal-signup-form");
+      const formForgot = document.getElementById("portal-forgot-form");
+      const formReset = document.getElementById("portal-reset-form");
 
       function setAuthTab(mode) {
         showPortalAlert("");
@@ -7485,10 +7526,72 @@
         }
         if (formSignIn) formSignIn.style.display = isSignIn ? "block" : "none";
         if (formSignUp) formSignUp.style.display = isSignIn ? "none" : "block";
+        if (formForgot) formForgot.style.display = "none";
+        if (formReset) formReset.style.display = "none";
       }
 
       if (tabSignIn) tabSignIn.addEventListener("click", () => setAuthTab("signin"));
       if (tabSignUp) tabSignUp.addEventListener("click", () => setAuthTab("signup"));
+
+      const forgotBtn = document.getElementById("btn-forgot-password");
+      const forgotBackBtn = document.getElementById("btn-forgot-back");
+      if (forgotBtn) forgotBtn.addEventListener("click", () => {
+        showPortalAlert("");
+        if (formSignIn) formSignIn.style.display = "none";
+        if (formSignUp) formSignUp.style.display = "none";
+        if (formForgot) formForgot.style.display = "block";
+        document.getElementById("forgot-email").value = document.getElementById("signin-email")?.value || "";
+      });
+      if (forgotBackBtn) forgotBackBtn.addEventListener("click", () => setAuthTab("signin"));
+
+      const recoveryToken = getRecoveryAccessToken();
+      if (recoveryToken && formReset) {
+        if (formSignIn) formSignIn.style.display = "none";
+        if (formSignUp) formSignUp.style.display = "none";
+        if (formForgot) formForgot.style.display = "none";
+        formReset.style.display = "block";
+        showPortalAlert("Choose a new password for your account.", "info");
+      }
+
+      if (formForgot) formForgot.addEventListener("submit", async e => {
+        e.preventDefault();
+        const btn = document.getElementById("btn-forgot-submit");
+        btn.disabled = true;
+        btn.textContent = "Sending...";
+        try {
+          await portalRequestPasswordReset(document.getElementById("forgot-email").value);
+          showPortalAlert("If an account exists for that email, a password reset link has been sent.", "info");
+        } catch (err) {
+          showPortalAlert(err.message || "Unable to send password reset email.", "error");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Send Reset Email";
+        }
+      });
+
+      if (formReset) formReset.addEventListener("submit", async e => {
+        e.preventDefault();
+        const password = document.getElementById("reset-password").value;
+        const confirmation = document.getElementById("reset-password-confirm").value;
+        if (password.length < 6 || password !== confirmation) {
+          showPortalAlert("Passwords must match and contain at least 6 characters.", "error");
+          return;
+        }
+        const btn = document.getElementById("btn-reset-submit");
+        btn.disabled = true;
+        btn.textContent = "Updating...";
+        try {
+          await portalUpdatePassword(password);
+          formReset.reset();
+          setAuthTab("signin");
+          showPortalAlert("Your password was updated. You can now sign in.", "info");
+        } catch (err) {
+          showPortalAlert(err.message || "Unable to update your password.", "error");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Update Password";
+        }
+      });
 
       const quickDocBtn = document.getElementById("btn-quick-fill-doctor");
       if (quickDocBtn) {
