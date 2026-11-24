@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import logging
 from datetime import date, datetime
 from html import escape
 from typing import Any
@@ -23,6 +24,8 @@ APP_URL = os.getenv("APP_URL", "")
 WEBHOOK_SECRET = os.getenv("SUPABASE_WEBHOOK_SECRET", "")
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
+
+logger = logging.getLogger("dr-mina-portal")
 
 admin_client: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 auth_client: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -91,8 +94,15 @@ class BroadcastIn(BaseModel):
 
 def send_email(to: str, subject: str, html: str) -> None:
     if not RESEND_API_KEY or not to:
+        logger.warning("Email skipped: RESEND_API_KEY or recipient is missing")
         return
-    resend.Emails.send({"from": FROM_EMAIL, "to": [to], "subject": subject, "html": html})
+    logger.info("Sending email subject=%r recipient=%s from=%s", subject, to, FROM_EMAIL)
+    try:
+        result = resend.Emails.send({"from": FROM_EMAIL, "to": [to], "subject": subject, "html": html})
+        logger.info("Email provider accepted message: %s", result)
+    except Exception:
+        logger.exception("Email provider rejected message subject=%r recipient=%s", subject, to)
+        raise
 
 
 def portal_link(path: str = "") -> str:
@@ -147,6 +157,11 @@ def notify_booking_update(record: dict[str, Any], old_record: dict[str, Any] | N
     send_email(patient.get("email", ""), "Your appointment was updated", f"<p>Hello {escape(patient.get('full_name') or 'there')},</p><p>Your appointment status is now <strong>{escape(status_text)}</strong>.</p><p><a href=\"{portal_link()}\">Open your appointments</a></p>")
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    return {"status": "ok", "service": "dr-mina-portal-api", "health": "/health"}
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "dr-mina-portal-api"}
@@ -154,7 +169,9 @@ def health() -> dict[str, str]:
 
 @app.post("/webhooks/supabase")
 def supabase_webhook(payload: dict[str, Any], x_webhook_secret: str | None = Header(default=None)) -> dict[str, bool]:
+    logger.info("Supabase webhook received type=%s table=%s", payload.get("type"), payload.get("table"))
     if WEBHOOK_SECRET and x_webhook_secret != WEBHOOK_SECRET:
+        logger.warning("Supabase webhook rejected: invalid secret")
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
     table = payload.get("table")
     record = payload.get("record") or {}
