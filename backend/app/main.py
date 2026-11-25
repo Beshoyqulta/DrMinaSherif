@@ -122,6 +122,11 @@ def notify_profile_approval(record: dict[str, Any], old_record: dict[str, Any] |
         send_email(record.get("email", ""), "Your patient portal access was approved", f"<p>Hello {escape(name)},</p><p>Dr. Mina Soliman has approved your access to the patient portal.</p><p><a href=\"{portal_link()}\">Open the patient portal</a></p>")
 
 
+def notify_profile_created(record: dict[str, Any]) -> None:
+    name = record.get("full_name") or "there"
+    send_email(record.get("email", ""), "Welcome to Dr. Mina Sherif’s Patient Portal", f"<p>Hello {escape(name)},</p><p>Welcome to Dr. Mina Sherif’s Patient Portal.</p><p>Your registration was received successfully and is now waiting for Dr. Mina Sherif’s approval.</p><p>You will be able to access the private patient features after approval.</p><p><a href=\"{portal_link()}\">Open the patient portal</a></p>")
+
+
 def notify_new_message(record: dict[str, Any]) -> None:
     if record.get("sender_role") == "doctor":
         patient = profile_for(record.get("patient_id"))
@@ -177,7 +182,9 @@ def supabase_webhook(payload: dict[str, Any], x_webhook_secret: str | None = Hea
     record = payload.get("record") or {}
     old_record = payload.get("old_record") or {}
     event = payload.get("type") or payload.get("eventType")
-    if table == "profiles" and event == "UPDATE":
+    if table == "profiles" and event == "INSERT":
+        notify_profile_created(record)
+    elif table == "profiles" and event == "UPDATE":
         notify_profile_approval(record, old_record)
     elif table == "direct_messages" and event == "INSERT":
         notify_new_message(record)

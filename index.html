@@ -5402,7 +5402,7 @@
         const userObj = data.user || data;
         if (!data.access_token) {
           return {
-            needsEmailConfirmation: true,
+            registrationPending: true,
             email: cleanEmail,
             fullName: fullName.trim()
           };
@@ -7585,10 +7585,10 @@
           try {
             const res = await portalSignUp({ fullName, phone, email, password });
             formSignUp.reset();
-            if (res.needsEmailConfirmation) {
+            if (res.registrationPending) {
               setAuthTab("signin");
               showPortalAlert(
-                `Account created for ${res.email}! Please check your email to confirm your address, then wait for Dr. Mina Soliman to approve your access.`,
+                `Welcome, ${res.fullName}! Your registration was received and is waiting for Dr. Mina Soliman's approval.`,
                 "info"
               );
             } else {
