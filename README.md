@@ -28,6 +28,8 @@ The backend exposes `/api/me`, `/api/slots`, `/api/bookings`, `/api/messages/{pa
 
 The Vercel frontend uses browser routes for the main pages: `/patient`, `/meditation`, `/history`, `/feed`, `/care`, and `/admin_panel`. Doctor sessions are restricted to `/admin_panel`; patient navigation is hidden from the doctor view. Vercel serves these routes through `vercel.json` rewrites.
 
+Render notification emails are implemented in [`backend/app/email_templates.py`](backend/app/email_templates.py). Edit the subject/body functions there, commit and push, then Render redeploys the updated email design. [`EMAIL_TEMPLATES.md`](EMAIL_TEMPLATES.md) contains the copy reference and the Supabase Auth password-reset template.
+
 ## Static hosting
 1. Upload the contents of this folder onto **Netlify Drop**, **Cloudflare Pages**, **Vercel**, or **GitHub Pages**.
 2. Share your HTTPS link with patients via WhatsApp.

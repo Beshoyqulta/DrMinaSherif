@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import logging
 from datetime import date, datetime
-from html import escape
 from typing import Any
 from uuid import UUID
 import resend
@@ -12,6 +11,15 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from supabase import Client, create_client
+from app.email_templates import (
+    appointment_request,
+    appointment_updated,
+    approved,
+    clinic_broadcast,
+    doctor_message,
+    patient_message,
+    welcome,
+)
 
 
 SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
@@ -118,13 +126,13 @@ def profile_for(user_id: str | None) -> dict[str, Any] | None:
 
 def notify_profile_approval(record: dict[str, Any], old_record: dict[str, Any] | None) -> None:
     if record.get("status") == "approved" and (not old_record or old_record.get("status") != "approved"):
-        name = record.get("full_name") or "there"
-        send_email(record.get("email", ""), "Your patient portal access was approved", f"<p>Hello {escape(name)},</p><p>Dr. Mina Soliman has approved your access to the patient portal.</p><p><a href=\"{portal_link()}\">Open the patient portal</a></p>")
+        subject, html = approved(record.get("full_name", ""), portal_link())
+        send_email(record.get("email", ""), subject, html)
 
 
 def notify_profile_created(record: dict[str, Any]) -> None:
-    name = record.get("full_name") or "there"
-    send_email(record.get("email", ""), "Welcome to Dr. Mina Sherif’s Patient Portal", f"<p>Hello {escape(name)},</p><p>Welcome to Dr. Mina Sherif’s Patient Portal.</p><p>Your registration was received successfully and is now waiting for Dr. Mina Sherif’s approval.</p><p>You will be able to access the private patient features after approval.</p><p><a href=\"{portal_link()}\">Open the patient portal</a></p>")
+    subject, html = welcome(record.get("full_name", ""), portal_link())
+    send_email(record.get("email", ""), subject, html)
 
 
 def notify_new_message(record: dict[str, Any]) -> None:
@@ -162,6 +170,52 @@ def notify_booking_update(record: dict[str, Any], old_record: dict[str, Any] | N
     send_email(patient.get("email", ""), "Your appointment was updated", f"<p>Hello {escape(patient.get('full_name') or 'there')},</p><p>Your appointment status is now <strong>{escape(status_text)}</strong>.</p><p><a href=\"{portal_link()}\">Open your appointments</a></p>")
 
 
+def templated_profile_created(record: dict[str, Any]) -> None:
+    subject, html = welcome(record.get("full_name", ""), portal_link())
+    send_email(record.get("email", ""), subject, html)
+
+
+def templated_profile_approval(record: dict[str, Any], old_record: dict[str, Any] | None) -> None:
+    if record.get("status") == "approved" and (not old_record or old_record.get("status") != "approved"):
+        subject, html = approved(record.get("full_name", ""), portal_link())
+        send_email(record.get("email", ""), subject, html)
+
+
+def templated_new_message(record: dict[str, Any]) -> None:
+    if record.get("sender_role") == "doctor":
+        patient = profile_for(record.get("patient_id"))
+        if patient:
+            subject, html = doctor_message(patient.get("full_name", ""), portal_link())
+            send_email(patient.get("email", ""), subject, html)
+        return
+    doctors = admin_client.table("profiles").select("email,full_name").eq("role", "doctor").eq("status", "approved").execute().data or []
+    for doctor in doctors:
+        subject, html = patient_message(doctor.get("full_name", ""), portal_link())
+        send_email(doctor.get("email", ""), subject, html)
+
+
+def templated_broadcast(record: dict[str, Any]) -> None:
+    patients = admin_client.table("profiles").select("email,full_name").eq("role", "patient").eq("status", "approved").execute().data or []
+    for patient in patients:
+        subject, html = clinic_broadcast(patient.get("full_name", ""), record.get("title", ""), portal_link())
+        send_email(patient.get("email", ""), subject, html)
+
+
+def templated_booking_update(record: dict[str, Any], old_record: dict[str, Any] | None, event: str) -> None:
+    if event == "INSERT":
+        doctors = admin_client.table("profiles").select("email,full_name").eq("role", "doctor").eq("status", "approved").execute().data or []
+        for doctor in doctors:
+            subject, html = appointment_request(doctor.get("full_name", ""), portal_link())
+            send_email(doctor.get("email", ""), subject, html)
+        return
+    if old_record and record.get("status") == old_record.get("status"):
+        return
+    patient = profile_for(record.get("patient_id"))
+    if patient:
+        subject, html = appointment_updated(patient.get("full_name", ""), record.get("status", "updated"), portal_link())
+        send_email(patient.get("email", ""), subject, html)
+
+
 @app.get("/")
 def root() -> dict[str, str]:
     return {"status": "ok", "service": "dr-mina-portal-api", "health": "/health"}
@@ -183,15 +237,15 @@ def supabase_webhook(payload: dict[str, Any], x_webhook_secret: str | None = Hea
     old_record = payload.get("old_record") or {}
     event = payload.get("type") or payload.get("eventType")
     if table == "profiles" and event == "INSERT":
-        notify_profile_created(record)
+        templated_profile_created(record)
     elif table == "profiles" and event == "UPDATE":
-        notify_profile_approval(record, old_record)
+        templated_profile_approval(record, old_record)
     elif table == "direct_messages" and event == "INSERT":
-        notify_new_message(record)
+        templated_new_message(record)
     elif table == "clinic_feed" and event == "INSERT":
-        notify_new_broadcast(record)
+        templated_broadcast(record)
     elif table == "bookings" and event in {"INSERT", "UPDATE"}:
-        notify_booking_update(record, old_record, event)
+        templated_booking_update(record, old_record, event)
     return {"ok": True}
 
 
