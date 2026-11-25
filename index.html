@@ -2265,17 +2265,6 @@
           </div>
         </div>
 
-        <!-- Always-Available Clinic & Emergency Contact Footer -->
-        <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border-color);">
-          <div style="font-size:0.74rem; color:var(--text-muted); margin-bottom:8px; text-align:center;">
-            Need urgent psychiatric support?
-          </div>
-          <div style="display:grid; grid-template-columns:minmax(220px, 360px); justify-content:center; gap:8px;">
-            <a href="https://wa.me/201026281035" target="_blank" rel="noopener" class="contact-action-btn emergency-btn" data-wa-url="https://wa.me/201026281035" style="padding:9px 8px; font-size:0.76rem;">
-              🚨 Emergency
-            </a>
-          </div>
-        </div>
       </div>
     </div>
   </section>
@@ -2367,11 +2356,6 @@
             <span class="stat-pill" id="header-stat-logs">0 Check-Ins</span>
             <span class="stat-pill" id="header-stat-med">0 Min Meditated</span>
           </div>
-        </div>
-        <div class="clinic-contact-strip">
-          <a href="https://wa.me/201026281035" target="_blank" rel="noopener" class="contact-action-btn emergency-btn" data-wa-url="https://wa.me/201026281035">
-            <span>🚨 Emergency Contact: Dr. Mina Soliman (WhatsApp)</span>
-          </a>
         </div>
         <div class="portal-quick-strip" id="portal-quick-strip">
           <button type="button" id="btn-jump-feed" class="portal-quick-pill">📰 Dr. Soliman Feed</button>
@@ -2748,9 +2732,7 @@
             </div>
 
             <div class="channel-notice">
-              <strong>Non-Emergency Clinical Channel:</strong> Use this private channel for session follow-ups, reflection notes, or scheduling questions. For an urgent psychiatric emergency, tap
-              <a href="https://wa.me/201026281035" target="_blank" rel="noopener" data-wa-url="https://wa.me/201026281035" style="color:var(--emergency-red); font-weight:700;">Emergency Contact on WhatsApp</a>
-              or contact your local emergency services immediately.
+              Use this private channel for session follow-ups, reflection notes, or scheduling questions.
             </div>
 
             <div id="patient-channel-doctor-redirect" style="display:none; text-align:center; padding:24px 12px;">
@@ -2842,30 +2824,8 @@
         <!-- SUB-TAB 5C: CARE PLAN, 5-4-3-2-1 GROUNDING, BACKUP & EMERGENCY SOS -->
         <div id="care-sub-plan" class="subtab-pane">
         <div class="clinical-grid">
-          <!-- Left: Direct Contact with Dr. Mina Soliman + 5-4-3-2-1 Grounding -->
+          <!-- Left: 5-4-3-2-1 Grounding -->
           <div>
-            <div class="card">
-              <div class="card-header">
-                <div>
-                <h3 class="card-title">Emergency Contact</h3>
-                  <p class="card-subtitle">Direct WhatsApp emergency line for Dr. Mina Soliman's patients.</p>
-                </div>
-              </div>
-
-              <div class="dr-contact-card" style="border-color: var(--emergency-red); margin-bottom: 0;">
-                <div style="font-weight: 700; font-size: 0.9rem; color: var(--emergency-red); margin-bottom: 4px;">
-                  🚨 Contact Dr. Mina Soliman in Case of Emergency
-                </div>
-                <div style="font-size: 0.81rem; color: var(--text-secondary); margin-bottom: 10px;">
-                  In case of an urgent psychiatric emergency, reach Dr. Mina Soliman directly via WhatsApp:<br />
-                  <a href="https://wa.me/201026281035" target="_blank" rel="noopener" data-wa-url="https://wa.me/201026281035" style="color: var(--emergency-red); font-weight: 700; word-break: break-all;">https://wa.me/201026281035</a>
-                </div>
-                <a href="https://wa.me/201026281035" target="_blank" rel="noopener" data-wa-url="https://wa.me/201026281035" class="primary-btn" style="background: var(--emergency-red);">
-                  🚨 Emergency Contact — Dr. Mina Soliman (WhatsApp)
-                </a>
-              </div>
-            </div>
-
             <div class="card">
               <div class="card-header">
                 <div>
@@ -4401,7 +4361,7 @@
         "====================================================",
         "DR. MINA SOLIMAN, MD — PSYCHIATRIC PATIENT SUMMARY",
         "====================================================",
-        `Book / Emergency Contact: ${DR_SOLIMAN_WHATSAPP_URL}`,
+        "Portal Access: Private Dr. Mina Sherif Patient Portal",
         `Patient Name: ${patientName}`,
         `Next Scheduled Session: ${appState.carePlan.nextAppt || "Not specified"}`,
         `Total Emotion Check-Ins: ${total}`,

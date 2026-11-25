@@ -8,7 +8,7 @@ The Vercel site is the patient-facing web app. The `backend/` folder is a FastAP
 - **Private Patient Portal & Doctor Approval Gate** with offline-first storage and Supabase cloud sync
 - **Centered Interactive 3-Ring Wheel of Emotions** (`540x540` SVG viewBox, zero clipping)
 - **Log Emotion to Journal** workflow with SUDS intensity, somatic cues & triggers (patient entries only — zero demo data)
-- **Direct WhatsApp Booking & Emergency Line**: `https://wa.me/201026281035`
+- **In-app appointment booking** with doctor-managed availability slots
 - **Therapeutic Guided Meditation** & offline Web Audio soundscape mixer with Screen Wake Lock support
 - **Personal Data Backup & Restore (.json)** in Care & Contact
 - **Full-Screen Home Screen & Offline Support** (`manifest.json`, `sw.js`, dynamic `theme-color`)
