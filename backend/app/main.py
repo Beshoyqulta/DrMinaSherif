@@ -111,7 +111,7 @@ def send_email(to: str, subject: str, html: str) -> None:
     except Exception:
         logger.exception("Email provider rejected message subject=%r recipient=%s", subject, to)
         raise
-
+ 
 
 def portal_link(path: str = "") -> str:
     return f"{APP_URL.rstrip('/')}/{path.lstrip('/')}" if APP_URL else "the patient portal"
