@@ -62,6 +62,24 @@ create table if not exists public.availability_slots (
   check (ends_at > starts_at), unique (starts_at, ends_at)
 );
 
+-- Keep only one open slot for each start time. If older data contains
+-- duplicates, retain the oldest slot and close the later duplicates before
+-- adding the constraint. Existing bookings remain attached to their slot.
+with ranked_open_slots as (
+  select id,
+         row_number() over (partition by starts_at order by created_at, id) as duplicate_rank
+  from public.availability_slots
+  where is_open = true
+)
+update public.availability_slots slots
+set is_open = false
+from ranked_open_slots ranked
+where slots.id = ranked.id and ranked.duplicate_rank > 1;
+
+create unique index if not exists one_open_slot_per_start
+  on public.availability_slots(starts_at)
+  where is_open = true;
+
 create table if not exists public.bookings (
   id uuid primary key default gen_random_uuid(), slot_id uuid references public.availability_slots(id),
   patient_id uuid not null references public.profiles(id) on delete cascade, patient_name text not null default '',

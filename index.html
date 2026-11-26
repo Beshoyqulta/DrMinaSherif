@@ -7197,7 +7197,17 @@
         if (!res.ok) throw new Error(extractApiError(res, "Unable to load available slots"));
         const booked = await portalHttp("GET", `${cfg.supabaseUrl}/rest/v1/bookings?preferred_date=eq.${encodeURIComponent(dateValue)}&status=in.(pending,confirmed,rescheduled)&select=slot_id`, supabaseAuthHeaders(cfg, portalSession.access_token));
         const bookedIds = new Set((booked.ok && Array.isArray(booked.data) ? booked.data : []).map(x => x.slot_id).filter(Boolean));
-        return (Array.isArray(res.data) ? res.data : []).filter(slot => !bookedIds.has(slot.id));
+        const seenTimes = new Set();
+        return (Array.isArray(res.data) ? res.data : [])
+          .filter(slot => !bookedIds.has(slot.id))
+          .filter(slot => {
+            const displayTime = slot.label || (slot.starts_at
+              ? new Date(slot.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              : "");
+            if (seenTimes.has(displayTime)) return false;
+            seenTimes.add(displayTime);
+            return true;
+          });
       }
       return [];
     }
