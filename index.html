@@ -6550,6 +6550,7 @@
     let selectedBookingFormat = "In-Clinic";
     let selectedBookingTime = "04:00 PM";
     let selectedBookingSlotId = null;
+    let bookingSlotRenderToken = 0;
     let doctorCachedSlots = [];
     let portalAutoRefreshHandle = null;
 
@@ -7213,6 +7214,7 @@
     }
 
     async function renderAvailableBookingSlots() {
+      const renderToken = ++bookingSlotRenderToken;
       const dateInput = document.getElementById("book-date");
       if (dateInput && !dateInput.value) {
         const tomorrow = new Date(Date.now() + 86400000);
@@ -7227,6 +7229,7 @@
       container.innerHTML = "";
       let slots = [];
       try { slots = await fetchAvailableSlotsForDate(dateInput?.value || ""); } catch (e) { slots = []; }
+      if (renderToken !== bookingSlotRenderToken) return;
       if (slots.length === 0 && getPortalConfig().mode === "sandbox") {
         slots = BOOKING_TIME_SLOTS.map(time => ({ id: "", label: time, starts_at: "", fallback_time: time }));
       }
