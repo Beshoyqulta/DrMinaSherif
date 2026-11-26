@@ -7339,15 +7339,30 @@
       };
 
       if (cfg.mode === "cloud" && portalSession.mode === "cloud") {
+        if (!selectedBookingSlotId) {
+          throw new Error("Please select one available time slot before booking.");
+        }
         await refreshCloudTokenIfNeeded();
         const res = await portalHttp(
           "POST",
-          `${cfg.supabaseUrl}/rest/v1/bookings`,
+          `${cfg.supabaseUrl}/rest/v1/rpc/book_available_slot`,
           Object.assign({}, supabaseAuthHeaders(cfg, portalSession.access_token), { "Prefer": "return=representation" }),
-          row
+          {
+            p_slot_id: selectedBookingSlotId,
+            p_patient_id: u.id,
+            p_session_type: sessionType,
+            p_session_format: sessionFormat,
+            p_patient_note: patientNote.trim()
+          }
         );
-        if (!res.ok) throw new Error(extractApiError(res, "Unable to submit appointment request"));
-        return Array.isArray(res.data) && res.data[0] ? res.data[0] : row;
+        if (!res.ok) {
+          const detail = extractApiError(res, "Unable to submit appointment request");
+          if (/slot_unavailable|duplicate|unique|already reserved/i.test(detail)) {
+            throw new Error("That time slot was just booked by another patient. Please choose another slot.");
+          }
+          throw new Error(detail);
+        }
+        return res.data || row;
       }
 
       const db = loadSandboxDb();
