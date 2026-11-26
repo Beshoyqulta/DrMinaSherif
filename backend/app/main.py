@@ -139,16 +139,18 @@ def profile_for(user_id: str | None) -> dict[str, Any] | None:
     return result.data if result.data else None
 
 
-def approved_doctors() -> list[dict[str, Any]]:
-    """Return notification recipients from the approved doctor profiles in Supabase."""
+def doctor_email_recipients() -> list[dict[str, Any]]:
+    """Return doctor-account email recipients from Supabase profiles."""
     result = (
         admin_client.table("profiles")
-        .select("email,full_name")
+        .select("email,full_name,role,status")
         .eq("role", "doctor")
-        .eq("status", "approved")
         .execute()
     )
-    return [doctor for doctor in (result.data or []) if str(doctor.get("email") or "").strip()]
+    doctors = [doctor for doctor in (result.data or []) if str(doctor.get("email") or "").strip()]
+    if not doctors:
+        logger.warning("No doctor email recipient found in public.profiles (role=doctor)")
+    return doctors
 
 
 def notify_profile_approval(record: dict[str, Any], old_record: dict[str, Any] | None) -> None:
@@ -169,7 +171,7 @@ def notify_new_message(record: dict[str, Any]) -> None:
             name = patient.get("full_name") or "there"
             send_email(patient.get("email", ""), "You have a new message from Dr. Mina Soliman", f"<p>Hello {escape(name)},</p><p>Dr. Mina Soliman sent you a new private portal message.</p><p><a href=\"{portal_link()}\">Open your message channel</a></p>")
     else:
-        for doctor in approved_doctors():
+        for doctor in doctor_email_recipients():
             send_email(doctor.get("email", ""), "A patient sent you a new private message", f"<p>Hello {escape(doctor.get('full_name') or 'Doctor')},</p><p>A patient sent a new private portal message.</p><p><a href=\"{portal_link()}\">Open the doctor portal</a></p>")
 
 
@@ -183,7 +185,7 @@ def notify_new_broadcast(record: dict[str, Any]) -> None:
 
 def notify_booking_update(record: dict[str, Any], old_record: dict[str, Any] | None, event: str) -> None:
     if event == "INSERT":
-        for doctor in approved_doctors():
+        for doctor in doctor_email_recipients():
             send_email(doctor.get("email", ""), "A patient requested an appointment", f"<p>Hello {escape(doctor.get('full_name') or 'Doctor')},</p><p>A patient submitted a new appointment request.</p><p><a href=\"{portal_link()}\">Open the doctor portal</a></p>")
         return
     if old_record and record.get("status") == old_record.get("status"):
@@ -213,7 +215,7 @@ def templated_new_message(record: dict[str, Any]) -> None:
             subject, html = doctor_message(patient.get("full_name", ""), portal_link())
             send_email(patient.get("email", ""), subject, html)
         return
-    for doctor in approved_doctors():
+    for doctor in doctor_email_recipients():
         subject, html = patient_message(doctor.get("full_name", ""), portal_link())
         send_email(doctor.get("email", ""), subject, html)
 
@@ -227,7 +229,7 @@ def templated_broadcast(record: dict[str, Any]) -> None:
 
 def templated_booking_update(record: dict[str, Any], old_record: dict[str, Any] | None, event: str) -> None:
     if event == "INSERT":
-        for doctor in approved_doctors():
+        for doctor in doctor_email_recipients():
             subject, html = appointment_request(doctor.get("full_name", ""), portal_link())
             send_email(doctor.get("email", ""), subject, html)
         return
@@ -240,7 +242,7 @@ def templated_booking_update(record: dict[str, Any], old_record: dict[str, Any] 
 
 
 def notify_doctors_of_patient_login(patient: dict[str, Any]) -> None:
-    for doctor in approved_doctors():
+    for doctor in doctor_email_recipients():
         subject, html = patient_login(patient.get("full_name", ""), patient.get("email", ""), portal_link())
         send_email(doctor.get("email", ""), subject, html)
 
