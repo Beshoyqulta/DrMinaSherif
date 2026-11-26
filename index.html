@@ -5473,7 +5473,7 @@
       if (!doc) {
         const pwHash = await hashLocalPassword("SolimanAdmin2026");
         db.users.push({
-          id: "doctor-admin-local",
+          id: createUuid(),
           email: docEmail,
           passwordHash: pwHash,
           full_name: "Dr. Mina Soliman, MD",
@@ -5669,7 +5669,7 @@
       }
       const pwHash = await hashLocalPassword(password);
       const newUser = {
-        id: "pat-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        id: createUuid(),
         email: cleanEmail,
         passwordHash: pwHash,
         full_name: fullName.trim(),
@@ -6664,7 +6664,7 @@
           );
           if (!res.ok) throw new Error(extractApiError(res, "Failed to update post"));
         } else {
-          const newId = "post-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+          const newId = createUuid();
           const res = await portalHttp(
             "POST",
             `${cfg.supabaseUrl}/rest/v1/clinic_feed`,
@@ -6699,7 +6699,7 @@
         target.updated_at = nowIso;
       } else {
         db.feedPosts.unshift({
-          id: "post-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+          id: createUuid(),
           author_id: portalSession.user.id,
           author_name: portalSession.user.full_name || "Dr. Mina Soliman, MD",
           title: cleanTitle,
@@ -7308,7 +7308,7 @@
       const u = portalSession.user;
       const nowIso = new Date().toISOString();
       const row = {
-        id: "book-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        id: createUuid(),
         slot_id: selectedBookingSlotId || null,
         patient_id: u.id,
         patient_name: u.full_name || appState.carePlan.patientName || "Patient",
