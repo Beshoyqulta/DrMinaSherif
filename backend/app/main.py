@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from html import escape
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +23,7 @@ from app.email_templates import (
     doctor_new_appointment,
     doctor_new_message,
     doctor_new_signup,
+    appointment_reminder,
     patient_login,
     welcome,
 )
@@ -43,6 +46,8 @@ admin_client: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 auth_client: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 app = FastAPI(title="Dr. Mina Soliman Patient Portal API", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+CAIRO_TZ = ZoneInfo("Africa/Cairo")
+reminder_task: asyncio.Task | None = None
 
 
 def current_user(authorization: str | None = Header(default=None)) -> dict[str, Any]:
@@ -104,10 +109,10 @@ class BroadcastIn(BaseModel):
     pinned: bool = False
 
 
-def send_email(to: str, subject: str, html: str) -> None:
+def send_email(to: str, subject: str, html: str) -> bool:
     if not SENDGRID_API_KEY or not FROM_EMAIL or not to:
         logger.warning("Email skipped: SendGrid API key, sender, or recipient is missing")
-        return
+        return False
     logger.info("Sending email subject=%r recipient=%s from=%s", subject, to, FROM_EMAIL)
     sender = Email(FROM_EMAIL.strip(), FROM_NAME.strip() or None)
     message = Mail(from_email=sender, to_emails=to, subject=subject, html_content=html)
@@ -116,6 +121,7 @@ def send_email(to: str, subject: str, html: str) -> None:
         if response.status_code >= 400:
             raise RuntimeError(f"SendGrid rejected email with HTTP {response.status_code}: {response.body}")
         logger.info("SendGrid accepted message recipient=%s status=%s", to, response.status_code)
+        return True
     except Exception as exc:
         provider_error = str(getattr(exc, "body", "") or "")
         logger.exception(
@@ -127,7 +133,7 @@ def send_email(to: str, subject: str, html: str) -> None:
         # Email delivery must not make a Supabase webhook fail. The database
         # change is already committed; the failure is recorded in Render logs
         # for retry/diagnosis without causing webhook retry storms.
-        return
+        return False
  
 
 def portal_link(path: str = "") -> str:
@@ -258,11 +264,17 @@ def templated_booking_update(record: dict[str, Any], old_record: dict[str, Any] 
             )
             send_email(doctor.get("email", ""), subject, html)
         return
-    if old_record and record.get("status") == old_record.get("status"):
+    if old_record and all(record.get(field) == old_record.get(field) for field in ("status", "confirmed_date", "confirmed_time")):
         return
     patient = profile_for(record.get("patient_id"))
     if patient:
-        subject, html = appointment_updated(patient.get("full_name", ""), record.get("status", "updated"), portal_link())
+        subject, html = appointment_updated(
+            patient.get("full_name", ""),
+            record.get("status", "updated"),
+            record.get("confirmed_date", ""),
+            record.get("confirmed_time", ""),
+            portal_link(),
+        )
         send_email(patient.get("email", ""), subject, html)
 
 
@@ -270,6 +282,76 @@ def notify_doctors_of_patient_login(patient: dict[str, Any]) -> None:
     for doctor in doctor_email_recipients():
         subject, html = patient_login(patient.get("full_name", ""), patient.get("email", ""), portal_link())
         send_email(doctor.get("email", ""), subject, html)
+
+
+def booking_start_time(record: dict[str, Any]) -> datetime | None:
+    booking_date = str(record.get("confirmed_date") or "").strip()
+    booking_time = str(record.get("confirmed_time") or "").strip()
+    if not booking_date or not booking_time:
+        return None
+    for value in (f"{booking_date} {booking_time}", f"{booking_date}T{booking_time}"):
+        for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %I:%M %p", "%Y-%m-%dT%H:%M", "%Y-%m-%dT%I:%M %p"):
+            try:
+                return datetime.strptime(value, fmt).replace(tzinfo=CAIRO_TZ)
+            except ValueError:
+                continue
+    logger.warning("Could not parse confirmed booking date/time: date=%r time=%r", booking_date, booking_time)
+    return None
+
+
+def send_due_appointment_reminders() -> None:
+    now = datetime.now(CAIRO_TZ)
+    try:
+        result = (
+            admin_client.table("bookings")
+            .select("*")
+            .eq("status", "confirmed")
+            .is_("reminder_sent_at", "null")
+            .execute()
+        )
+        for booking in result.data or []:
+            start = booking_start_time(booking)
+            if not start:
+                continue
+            seconds_until_start = (start - now).total_seconds()
+            if not 0 < seconds_until_start <= 30 * 60:
+                continue
+            patient = profile_for(booking.get("patient_id"))
+            if not patient or not patient.get("email"):
+                continue
+            subject, html = appointment_reminder(
+                patient.get("full_name", ""),
+                booking.get("confirmed_date", ""),
+                booking.get("confirmed_time", ""),
+                portal_link(),
+            )
+            if send_email(patient["email"], subject, html):
+                admin_client.table("bookings").update({"reminder_sent_at": datetime.now(timezone.utc).isoformat()}).eq("id", str(booking["id"])).is_("reminder_sent_at", "null").execute()
+                logger.info("Appointment reminder sent booking=%s recipient=%s", booking.get("id"), patient["email"])
+    except Exception:
+        logger.exception("Appointment reminder scan failed")
+
+
+async def appointment_reminder_loop() -> None:
+    while True:
+        await asyncio.to_thread(send_due_appointment_reminders)
+        await asyncio.sleep(60)
+
+
+@app.on_event("startup")
+async def start_appointment_reminder_loop() -> None:
+    global reminder_task
+    reminder_task = asyncio.create_task(appointment_reminder_loop())
+
+
+@app.on_event("shutdown")
+async def stop_appointment_reminder_loop() -> None:
+    if reminder_task:
+        reminder_task.cancel()
+        try:
+            await reminder_task
+        except asyncio.CancelledError:
+            pass
 
 
 @app.get("/")

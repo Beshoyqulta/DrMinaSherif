@@ -48,8 +48,25 @@ def appointment_request(name: str, url: str):
     return "New patient appointment request", shell(f'<p>Hello {escape(name or "Doctor")},</p><p>A patient has submitted a new appointment request.</p><p>{button("Review Appointment Request", url.rstrip("/") + "/admin_panel")}</p><p>Dr Mina Soliman’s Patient Portal</p>')
 
 
-def appointment_updated(name: str, status: str, url: str):
-    return "Your appointment status was updated", shell(f'<p>Hello {escape(name or "there")},</p><p>Your appointment status has been updated to:</p><div style="background:#eef6f1;border-left:4px solid #2e6f5e;padding:14px 16px;margin:20px 0;font-size:18px;font-weight:bold;">{escape(status or "updated")}</div><p>{button("View My Appointments", url.rstrip("/") + "/care")}</p><p>Dr Mina Soliman’s Clinic</p>')
+def appointment_updated(name: str, status: str, confirmed_date: str, confirmed_time: str, url: str):
+    normalized_status = (status or "updated").lower()
+    if normalized_status == "confirmed":
+        subject = "Your appointment is confirmed"
+        intro = "Dr Mina Soliman has confirmed your appointment."
+    elif normalized_status == "rescheduled":
+        subject = "Your appointment was rescheduled"
+        intro = "Dr Mina Soliman has changed the time of your appointment."
+    else:
+        subject = "Your appointment status was updated"
+        intro = "Your appointment status has been updated."
+    timing = ""
+    if confirmed_date or confirmed_time:
+        timing = f'<div style="background:#eef6f1;border-left:4px solid #2e6f5e;padding:14px 16px;margin:20px 0;font-size:17px;font-weight:bold;">Date: {escape(confirmed_date or "To be confirmed")}<br />Time: {escape(confirmed_time or "To be confirmed")}</div>'
+    return subject, shell(f'<p>Hello {escape(name or "there")},</p><p>{intro}</p>{timing}<p>{button("View My Appointment", url.rstrip("/") + "/care")}</p><p>Dr Mina Soliman’s Clinic</p>')
+
+
+def appointment_reminder(name: str, confirmed_date: str, confirmed_time: str, url: str):
+    return "Reminder: your appointment starts in 30 minutes", shell(f'<p>Hello {escape(name or "there")},</p><p>This is a reminder that your appointment with Dr Mina Soliman starts in approximately 30 minutes.</p><div style="background:#fff8e8;border-left:4px solid #d49a35;padding:14px 16px;margin:20px 0;font-size:17px;font-weight:bold;">Date: {escape(confirmed_date or "—")}<br />Time: {escape(confirmed_time or "—")}</div><p>{button("Open Patient Portal", url.rstrip("/") + "/care")}</p><p>Dr Mina Soliman’s Clinic</p>')
 
 
 def clinic_broadcast(name: str, title: str, url: str):

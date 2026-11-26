@@ -87,8 +87,9 @@ create table if not exists public.bookings (
   session_format text not null, preferred_date text not null default '', preferred_time text not null default '',
   patient_note text not null default '', status text not null default 'pending' check (status in ('pending','confirmed','rescheduled','completed','cancelled')),
   confirmed_date text not null default '', confirmed_time text not null default '', meeting_link text not null default '',
-  doctor_note text not null default '', created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+  doctor_note text not null default '', reminder_sent_at timestamptz, created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
+alter table public.bookings add column if not exists reminder_sent_at timestamptz;
 create unique index if not exists one_active_booking_per_slot on public.bookings(slot_id) where status in ('pending','confirmed','rescheduled');
 create unique index if not exists one_active_booking_per_time on public.bookings(preferred_date, preferred_time) where slot_id is null and status in ('pending','confirmed','rescheduled');
 

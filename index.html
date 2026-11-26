@@ -7377,6 +7377,9 @@
     async function updateBookingRecord(bookingId, patch) {
       const cfg = getPortalConfig();
       const cleanPatch = Object.assign({}, patch, { updated_at: new Date().toISOString() });
+      if (cleanPatch.status === "confirmed" || cleanPatch.status === "rescheduled" || cleanPatch.confirmed_date != null || cleanPatch.confirmed_time != null) {
+        cleanPatch.reminder_sent_at = null;
+      }
       if (cleanPatch.meeting_link != null) {
         cleanPatch.meeting_link = sanitizeHttpUrl(cleanPatch.meeting_link);
       }
