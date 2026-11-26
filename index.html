@@ -2149,9 +2149,18 @@
     html,
     body {
       min-height: 100%;
+      height: auto !important;
       overflow-x: hidden;
-      overflow-y: auto;
+      overflow-y: visible !important;
       touch-action: pan-y;
+    }
+
+    html {
+      overflow-y: scroll !important;
+    }
+
+    body.portal-locked {
+      overflow-y: visible !important;
     }
 
     img,
@@ -2167,8 +2176,19 @@
       touch-action: pan-y;
     }
 
+    body.portal-locked .portal-gate {
+      display: block !important;
+      min-height: 100dvh;
+      height: auto !important;
+      overflow: visible;
+    }
+
     .portal-card {
       margin: auto 0;
+    }
+
+    body.portal-locked .portal-card {
+      margin: 0 auto;
     }
 
     @media (max-width: 720px) {
