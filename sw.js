@@ -1,4 +1,4 @@
-const CACHE_NAME = "dr-mina-soliman-web-v7";
+const CACHE_NAME = "dr-mina-soliman-web-v8";
 const ASSETS = [
   "./",
   "./index.html",
