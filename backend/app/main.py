@@ -4,7 +4,6 @@ import os
 import logging
 from datetime import date, datetime
 from html import escape
-from email.utils import parseaddr
 from typing import Any
 from uuid import UUID
 
@@ -31,6 +30,7 @@ SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 ALLOWED_ORIGINS = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "*").split(",") if x.strip()]
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "")
+FROM_NAME = os.getenv("FROM_NAME", "Dr. Mina Sherif")
 APP_URL = os.getenv("APP_URL", "")
 WEBHOOK_SECRET = os.getenv("SUPABASE_WEBHOOK_SECRET", "")
 
@@ -106,9 +106,7 @@ def send_email(to: str, subject: str, html: str) -> None:
         logger.warning("Email skipped: SendGrid API key, sender, or recipient is missing")
         return
     logger.info("Sending email subject=%r recipient=%s from=%s", subject, to, FROM_EMAIL)
-    sender_name, sender_address = parseaddr(FROM_EMAIL)
-    sender_address = sender_address or FROM_EMAIL.strip()
-    sender = Email(sender_address, sender_name or None)
+    sender = Email(FROM_EMAIL.strip(), FROM_NAME.strip() or None)
     message = Mail(from_email=sender, to_emails=to, subject=subject, html_content=html)
     try:
         response = SendGridAPIClient(SENDGRID_API_KEY).send(message)
