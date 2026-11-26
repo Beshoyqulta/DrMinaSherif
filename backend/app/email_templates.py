@@ -27,6 +27,19 @@ def patient_message(name: str, url: str):
     return "A patient sent a new private portal message", shell(f'<p>Hello {escape(name or "Doctor")},</p><p>A patient sent a new private message through the Patient Portal.</p><p>{button("Open Doctor Panel", url.rstrip("/") + "/admin_panel")}</p><p>Dr Mina Soliman’s Patient Portal</p>')
 
 
+def doctor_new_signup(patient_name: str, patient_email: str, url: str):
+    return "New patient signup awaiting your approval", shell(f'<p>Hello Doctor,</p><p><strong>{escape(patient_name or "A new patient")}</strong> ({escape(patient_email or "unknown email")}) has created an account in the Patient Portal.</p><div style="background:#fff8e8;border-left:4px solid #d49a35;padding:14px 16px;margin:20px 0;">The account is waiting for your approval before portal access is granted.</div><p>{button("Review Patient Signup", url.rstrip("/") + "/admin_panel")}</p><p>Dr Mina Soliman’s Patient Portal</p>')
+
+
+def doctor_new_message(doctor_name: str, patient_name: str, patient_email: str, url: str):
+    return "New patient message requires your attention", shell(f'<p>Hello {escape(doctor_name or "Doctor")},</p><p><strong>{escape(patient_name or "A patient")}</strong> ({escape(patient_email or "unknown email")}) sent a new private message through the Patient Portal.</p><p>{button("Open Patient Channels", url.rstrip("/") + "/admin_panel")}</p><p>The message content is available only inside the authenticated Doctor Panel.</p><p>Dr Mina Soliman’s Patient Portal</p>')
+
+
+def doctor_new_appointment(doctor_name: str, patient_name: str, patient_email: str, session_type: str, preferred_date: str, preferred_time: str, url: str):
+    details = f'<div style="background:#eef6f1;border-left:4px solid #2e6f5e;padding:14px 16px;margin:20px 0;"><strong>Patient:</strong> {escape(patient_name or "A patient")}<br /><strong>Email:</strong> {escape(patient_email or "unknown email")}<br /><strong>Session:</strong> {escape(session_type or "Requested session")}<br /><strong>Requested time:</strong> {escape(preferred_date or "—")} {escape(preferred_time or "")}</div>'
+    return "New appointment request from a patient", shell(f'<p>Hello {escape(doctor_name or "Doctor")},</p><p>A patient submitted a new appointment request.</p>{details}<p>{button("Review Appointment", url.rstrip("/") + "/admin_panel")}</p><p>Dr Mina Soliman’s Patient Portal</p>')
+
+
 def patient_login(patient_name: str, patient_email: str, url: str):
     return "A patient signed in to the portal", shell(f'<p>Hello Doctor,</p><p><strong>{escape(patient_name or "A patient")}</strong> ({escape(patient_email or "unknown email")}) has just signed in to the Patient Portal.</p><p>{button("Open Doctor Panel", url.rstrip("/") + "/admin_panel")}</p><p>Dr Mina Soliman’s Patient Portal</p>')
 

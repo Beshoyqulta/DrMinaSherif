@@ -14,13 +14,14 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Email, Mail
 from supabase import Client, create_client
 from app.email_templates import (
-    appointment_request,
     appointment_updated,
     approved,
     clinic_broadcast,
     doctor_message,
+    doctor_new_appointment,
+    doctor_new_message,
+    doctor_new_signup,
     patient_login,
-    patient_message,
     welcome,
 )
 
@@ -200,6 +201,13 @@ def notify_booking_update(record: dict[str, Any], old_record: dict[str, Any] | N
 def templated_profile_created(record: dict[str, Any]) -> None:
     subject, html = welcome(record.get("full_name", ""), portal_link())
     send_email(record.get("email", ""), subject, html)
+    for doctor in doctor_email_recipients():
+        subject, html = doctor_new_signup(
+            record.get("full_name", ""),
+            record.get("email", ""),
+            portal_link(),
+        )
+        send_email(doctor.get("email", ""), subject, html)
 
 
 def templated_profile_approval(record: dict[str, Any], old_record: dict[str, Any] | None) -> None:
@@ -215,8 +223,16 @@ def templated_new_message(record: dict[str, Any]) -> None:
             subject, html = doctor_message(patient.get("full_name", ""), portal_link())
             send_email(patient.get("email", ""), subject, html)
         return
+    patient = profile_for(record.get("sender_id"))
+    patient_name = (patient or {}).get("full_name") or record.get("sender_name", "")
+    patient_email = (patient or {}).get("email", "")
     for doctor in doctor_email_recipients():
-        subject, html = patient_message(doctor.get("full_name", ""), portal_link())
+        subject, html = doctor_new_message(
+            doctor.get("full_name", ""),
+            patient_name,
+            patient_email,
+            portal_link(),
+        )
         send_email(doctor.get("email", ""), subject, html)
 
 
@@ -230,7 +246,15 @@ def templated_broadcast(record: dict[str, Any]) -> None:
 def templated_booking_update(record: dict[str, Any], old_record: dict[str, Any] | None, event: str) -> None:
     if event == "INSERT":
         for doctor in doctor_email_recipients():
-            subject, html = appointment_request(doctor.get("full_name", ""), portal_link())
+            subject, html = doctor_new_appointment(
+                doctor.get("full_name", ""),
+                record.get("patient_name", ""),
+                record.get("patient_email", ""),
+                record.get("session_type", ""),
+                record.get("preferred_date", ""),
+                record.get("preferred_time", ""),
+                portal_link(),
+            )
             send_email(doctor.get("email", ""), subject, html)
         return
     if old_record and record.get("status") == old_record.get("status"):

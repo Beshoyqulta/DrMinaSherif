@@ -141,6 +141,26 @@ Content:
 <p>Dr. Mina Sherif’s Patient Portal</p>
 ```
 
+The Render backend now uses a doctor-specific version of this template. It includes the patient name and email, but not the message body:
+
+Subject:
+
+```text
+New patient message requires your attention
+```
+
+## 5b. New patient signup — doctor receives notification
+
+Use for `profiles INSERT` in addition to the patient welcome email.
+
+Subject:
+
+```text
+New patient signup awaiting your approval
+```
+
+The email includes the patient’s name and email and links to `/admin_panel` for approval.
+
 ## 6. New appointment request — doctor receives notification
 
 Use for `bookings INSERT`.
@@ -161,6 +181,8 @@ Content:
 <p><a href="{{portal_url}}/admin_panel" style="display:inline-block;background:#1f4e43;color:#ffffff;padding:11px 18px;border-radius:8px;text-decoration:none;font-weight:bold;">Review Appointment Request</a></p>
 <p>Dr. Mina Sherif’s Patient Portal</p>
 ```
+
+The live Render template also includes the patient name, patient email, session type, preferred date, and preferred time. It does not include sensitive clinical notes.
 
 ## 7. Appointment status updated — patient receives notification
 
