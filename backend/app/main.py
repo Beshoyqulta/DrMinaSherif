@@ -19,6 +19,7 @@ from app.email_templates import (
     approved,
     clinic_broadcast,
     doctor_message,
+    patient_login,
     patient_message,
     welcome,
 )
@@ -230,6 +231,13 @@ def templated_booking_update(record: dict[str, Any], old_record: dict[str, Any] 
         send_email(patient.get("email", ""), subject, html)
 
 
+def notify_doctors_of_patient_login(patient: dict[str, Any]) -> None:
+    doctors = admin_client.table("profiles").select("email,full_name").eq("role", "doctor").eq("status", "approved").execute().data or []
+    for doctor in doctors:
+        subject, html = patient_login(patient.get("full_name", ""), patient.get("email", ""), portal_link())
+        send_email(doctor.get("email", ""), subject, html)
+
+
 @app.get("/")
 def root() -> dict[str, str]:
     return {"status": "ok", "service": "dr-mina-portal-api", "health": "/health"}
@@ -266,6 +274,14 @@ def supabase_webhook(payload: dict[str, Any], x_webhook_secret: str | None = Hea
 @app.get("/api/me")
 def me(user: dict[str, Any] = Depends(current_user)) -> dict[str, Any]:
     return user["profile"]
+
+
+@app.post("/api/login-notification")
+def login_notification(user: dict[str, Any] = Depends(current_user)) -> dict[str, bool]:
+    profile = user["profile"]
+    if profile.get("role") == "patient":
+        notify_doctors_of_patient_login(profile)
+    return {"ok": True}
 
 
 @app.get("/api/slots")

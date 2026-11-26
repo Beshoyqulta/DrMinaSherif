@@ -2144,6 +2144,149 @@
     .booking-reschedule-box.open {
       display: block;
     }
+
+    /* Mobile layout safeguards */
+    html,
+    body {
+      min-height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    img,
+    svg,
+    video,
+    canvas {
+      max-width: 100%;
+    }
+
+    .portal-gate {
+      overflow-y: auto;
+      align-items: flex-start;
+    }
+
+    .portal-card {
+      margin: auto 0;
+    }
+
+    @media (max-width: 720px) {
+      .app-shell {
+        padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .main-content {
+        padding: 12px 10px 24px;
+      }
+
+      .app-header {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .header-top,
+      .card-header,
+      .welcome-top-row {
+        align-items: flex-start;
+      }
+
+      .header-actions {
+        width: 100%;
+      }
+
+      .header-actions .icon-btn {
+        flex: 1 1 auto;
+        justify-content: center;
+      }
+
+      .card,
+      .feed-post-card,
+      .sanctuary-stage {
+        padding: 13px;
+      }
+
+      .channel-composer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .channel-composer .primary-btn {
+        width: 100%;
+      }
+
+      .channel-thread {
+        min-height: 190px;
+        max-height: none;
+      }
+
+      #doctor-slot-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      }
+
+      #doctor-slot-form > button {
+        width: 100%;
+      }
+
+      .bottom-nav {
+        padding-left: 3px;
+        padding-right: 3px;
+      }
+
+      .bottom-nav .nav-item {
+        padding-left: 1px;
+        padding-right: 1px;
+        font-size: 0.62rem;
+      }
+
+      .bottom-nav .nav-item svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .portal-gate {
+        min-height: 100dvh;
+        padding: calc(12px + env(safe-area-inset-top, 0px)) 10px calc(18px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .portal-card {
+        border-radius: 16px;
+      }
+
+      .portal-card-header {
+        padding: 17px 16px 15px;
+      }
+
+      .portal-card-body {
+        padding: 16px;
+      }
+
+      .portal-card .brand-group {
+        gap: 9px;
+      }
+
+      .portal-card .brand-title {
+        font-size: 1.05rem;
+      }
+
+      .portal-card .brand-subtitle {
+        font-size: 0.64rem;
+      }
+    }
+
+    @media (max-width: 420px) {
+      #doctor-slot-form {
+        grid-template-columns: 1fr !important;
+      }
+
+      .main-content {
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+
+      .portal-card-body {
+        padding-left: 13px;
+        padding-right: 13px;
+      }
+    }
   </style>
 </head>
 <body class="portal-locked">
@@ -5316,6 +5459,15 @@
       return hdrs;
     }
 
+    async function notifyDoctorOfPatientLogin(cfg, session) {
+      if (!cfg.backendUrl || !session || session.mode !== "cloud" || !session.access_token || session.user?.role === "doctor") return;
+      try {
+        await portalHttp("POST", `${cfg.backendUrl}/api/login-notification`, supabaseAuthHeaders(cfg, session.access_token));
+      } catch (e) {
+        // Login should remain usable if the optional notification is unavailable.
+      }
+    }
+
     async function refreshCloudTokenIfNeeded() {
       const cfg = getPortalConfig();
       if (cfg.mode !== "cloud" || !portalSession || !portalSession.refresh_token) return portalSession;
@@ -5454,6 +5606,7 @@
         };
         savePortalSession(sess);
         await refreshMyProfile();
+        await notifyDoctorOfPatientLogin(cfg, portalSession);
         return portalSession;
       }
 

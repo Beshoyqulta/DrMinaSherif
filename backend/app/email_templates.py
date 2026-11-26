@@ -27,6 +27,10 @@ def patient_message(name: str, url: str):
     return "A patient sent a new private portal message", shell(f'<p>Hello {escape(name or "Doctor")},</p><p>A patient sent a new private message through the Patient Portal.</p><p>{button("Open Doctor Panel", url.rstrip("/") + "/admin_panel")}</p><p>Dr. Mina Sherif’s Patient Portal</p>')
 
 
+def patient_login(patient_name: str, patient_email: str, url: str):
+    return "A patient signed in to the portal", shell(f'<p>Hello Doctor,</p><p><strong>{escape(patient_name or "A patient")}</strong> ({escape(patient_email or "unknown email")}) has just signed in to the Patient Portal.</p><p>{button("Open Doctor Panel", url.rstrip("/") + "/admin_panel")}</p><p>Dr. Mina Sherif’s Patient Portal</p>')
+
+
 def appointment_request(name: str, url: str):
     return "New patient appointment request", shell(f'<p>Hello {escape(name or "Doctor")},</p><p>A patient has submitted a new appointment request.</p><p>{button("Review Appointment Request", url.rstrip("/") + "/admin_panel")}</p><p>Dr. Mina Sherif’s Patient Portal</p>')
 
