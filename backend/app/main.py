@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import os
 import logging
+import smtplib
 from datetime import date, datetime
+from email.message import EmailMessage
+from html import escape
 from typing import Any
 from uuid import UUID
-import resend
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,12 +28,13 @@ SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
 SUPABASE_ANON_KEY = os.environ["SUPABASE_ANON_KEY"]
 SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 ALLOWED_ORIGINS = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "*").split(",") if x.strip()]
-RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
-FROM_EMAIL = os.getenv("FROM_EMAIL", "Dr. Mina Soliman <onboarding@resend.dev>")
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+FROM_EMAIL = os.getenv("FROM_EMAIL", "")
 APP_URL = os.getenv("APP_URL", "")
 WEBHOOK_SECRET = os.getenv("SUPABASE_WEBHOOK_SECRET", "")
-if RESEND_API_KEY:
-    resend.api_key = RESEND_API_KEY
 
 logger = logging.getLogger("dr-mina-portal")
 
@@ -101,15 +104,31 @@ class BroadcastIn(BaseModel):
 
 
 def send_email(to: str, subject: str, html: str) -> None:
-    if not RESEND_API_KEY or not to:
-        logger.warning("Email skipped: RESEND_API_KEY or recipient is missing")
+    if not SMTP_USERNAME or not SMTP_PASSWORD or not FROM_EMAIL or not to:
+        logger.warning("Email skipped: SMTP credentials, sender, or recipient is missing")
         return
     logger.info("Sending email subject=%r recipient=%s from=%s", subject, to, FROM_EMAIL)
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = FROM_EMAIL
+    message["To"] = to
+    message.set_content("This message contains HTML. Please open it in an HTML-capable email client.")
+    message.add_alternative(html, subtype="html")
     try:
-        result = resend.Emails.send({"from": FROM_EMAIL, "to": [to], "subject": subject, "html": html})
-        logger.info("Email provider accepted message: %s", result)
+        if SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
+                smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
+                smtp.send_message(message)
+        else:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
+                smtp.ehlo()
+                smtp.starttls()
+                smtp.ehlo()
+                smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
+                smtp.send_message(message)
+        logger.info("Email provider accepted message recipient=%s", to)
     except Exception:
-        logger.exception("Email provider rejected message subject=%r recipient=%s", subject, to)
+        logger.exception("SMTP provider rejected message subject=%r recipient=%s", subject, to)
         raise
  
 

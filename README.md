@@ -19,16 +19,16 @@ The Vercel site is the patient-facing web app. The `backend/` folder is a FastAP
    Add the Netlify URL to the Supabase Redirect URLs as well; this is where password-reset links return.
 3. Create the doctor's account in Supabase Auth using `minasherif@windowslive.com`, then run the promotion statement at the end of `supabase-setup.sql`. Set the password only in Supabase Auth; never commit it to the frontend or repository.
 4. Deploy `backend/` to Render using [`render.yaml`](render.yaml). Set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `ALLOWED_ORIGINS`. Never put the service-role key in Netlify or browser code.
-5. Create a [Resend](https://resend.com) API key, verify the sender domain, and set `RESEND_API_KEY`, `FROM_EMAIL`, `APP_URL`, and `SUPABASE_WEBHOOK_SECRET` on Render.
+5. Configure Gmail SMTP on Render with `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USERNAME`, `SMTP_PASSWORD` (a Gmail App Password), `FROM_EMAIL`, `APP_URL`, and `SUPABASE_WEBHOOK_SECRET`. The sender address must match the Gmail SMTP username.
 6. In Supabase Database Webhooks, create POST webhooks to `https://YOUR-RENDER-SERVICE.onrender.com/webhooks/supabase` for `profiles` INSERT + UPDATE, `direct_messages` INSERT, `clinic_feed` INSERT, and `bookings` INSERT + UPDATE. A profile INSERT sends the welcome/pending-approval email; a profile UPDATE to approved sends the approval email. Add the `x-webhook-secret` header with the same value as `SUPABASE_WEBHOOK_SECRET`.
 7. Check `/health`; API docs are available at `/docs`.
 8. Update [`config.js`](config.js) with the Supabase URL, publishable/anon key, and Render backend URL, then redeploy Vercel. The browser only receives the Supabase publishable/anon key; service-role and Resend keys stay on Render.
 
-The backend exposes `/api/me`, `/api/slots`, `/api/bookings`, `/api/messages/{patient_id}`, and `/api/feed`. Booking creation uses a database function and a unique active-booking index, so simultaneous requests cannot reserve the same slot. Email notifications are sent for approval, doctor messages, clinic broadcasts, and appointment status changes. If `RESEND_API_KEY` is absent, the service remains usable but skips email delivery.
+The backend exposes `/api/me`, `/api/slots`, `/api/bookings`, `/api/messages/{patient_id}`, and `/api/feed`. Booking creation uses a database function and a unique active-booking index, so simultaneous requests cannot reserve the same slot. Email notifications are sent for approval, doctor messages, clinic broadcasts, and appointment status changes. If the Gmail SMTP credentials are absent, the service remains usable but skips email delivery.
 
 The Vercel frontend uses browser routes for the main pages: `/patient`, `/meditation`, `/history`, `/feed`, `/care`, and `/admin_panel`. Doctor sessions are restricted to `/admin_panel`; patient navigation is hidden from the doctor view. Vercel serves these routes through `vercel.json` rewrites.
 
-Render notification emails are implemented in [`backend/app/email_templates.py`](backend/app/email_templates.py). Edit the subject/body functions there, commit and push, then Render redeploys the updated email design. [`EMAIL_TEMPLATES.md`](EMAIL_TEMPLATES.md) contains the copy reference and the Supabase Auth password-reset template.
+Render notification emails are implemented in [`backend/app/email_templates.py`](backend/app/email_templates.py) and delivered through Gmail SMTP. Edit the subject/body functions there, commit and push, then Render redeploys the updated email design. [`EMAIL_TEMPLATES.md`](EMAIL_TEMPLATES.md) contains the copy reference and the Supabase Auth password-reset template.
 
 ## Static hosting
 1. Upload the contents of this folder onto **Netlify Drop**, **Cloudflare Pages**, **Vercel**, or **GitHub Pages**.

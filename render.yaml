@@ -15,7 +15,13 @@ services:
         sync: false
       - key: ALLOWED_ORIGINS
         sync: false
-      - key: RESEND_API_KEY
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
         sync: false
       - key: FROM_EMAIL
         sync: false

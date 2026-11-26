@@ -5153,10 +5153,13 @@
     function extractApiError(res, fallbackMsg) {
       if (!res) return fallbackMsg;
       if (res.data && typeof res.data === "object") {
-        return res.data.error_description || res.data.msg || res.data.message || res.data.error || fallbackMsg;
+        const detail = res.data.error_description || res.data.msg || res.data.message || res.data.error || "";
+        const code = res.data.error_code || res.data.code || "";
+        const suffix = code && !String(detail).toLowerCase().includes(String(code).toLowerCase()) ? ` (${code})` : "";
+        return detail ? `${detail}${suffix}` : `${fallbackMsg}${res.status ? ` (HTTP ${res.status})` : ""}`;
       }
       if (typeof res.data === "string" && res.data.trim()) return res.data.trim().slice(0, 180);
-      return fallbackMsg;
+      return `${fallbackMsg}${res.status ? ` (HTTP ${res.status})` : ""}`;
     }
 
     async function hashLocalPassword(pw) {
