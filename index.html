@@ -6552,6 +6552,7 @@
     let selectedBookingSlotId = null;
     let bookingSlotRenderToken = 0;
     let doctorCachedSlots = [];
+    let openRescheduleBookingId = null;
     let portalAutoRefreshHandle = null;
 
     function getSavedFeedIds() {
@@ -7558,10 +7559,12 @@
         `;
 
         const reschedBox = card.querySelector(".booking-reschedule-box");
+        if (openRescheduleBookingId === b.id) reschedBox.classList.add("open");
         const confirmBtn = card.querySelector(".btn-doc-confirm");
         if (confirmBtn) {
           confirmBtn.addEventListener("click", async () => {
             try {
+              openRescheduleBookingId = null;
               await updateBookingRecord(b.id, {
                 status: "confirmed",
                 confirmed_date: shownDate,
@@ -7574,7 +7577,9 @@
         }
 
         card.querySelector(".btn-doc-resched-toggle").addEventListener("click", () => {
-          reschedBox.classList.toggle("open");
+          const isOpening = !reschedBox.classList.contains("open");
+          reschedBox.classList.toggle("open", isOpening);
+          openRescheduleBookingId = isOpening ? b.id : null;
         });
 
         const saveWithStatus = async (statusVal) => {
@@ -7590,6 +7595,7 @@
               meeting_link: cLink,
               doctor_note: cNote
             });
+            openRescheduleBookingId = null;
             await refreshDoctorBookings(false);
             showToast(`Appointment updated (${statusVal})`);
           } catch (e) { showToast(e.message || "Error updating appointment"); }
@@ -7602,6 +7608,7 @@
         if (compBtn) {
           compBtn.addEventListener("click", async () => {
             try {
+              openRescheduleBookingId = null;
               await updateBookingRecord(b.id, { status: "completed" });
               await refreshDoctorBookings(false);
               showToast("Session marked completed");
@@ -7613,6 +7620,7 @@
         if (cancBtn) {
           cancBtn.addEventListener("click", async () => {
             try {
+              openRescheduleBookingId = null;
               await updateBookingRecord(b.id, { status: "cancelled" });
               await refreshDoctorBookings(false);
               showToast("Appointment cancelled");
@@ -7686,6 +7694,7 @@
         const cfg = getPortalConfig();
         if (cfg.mode !== "cloud") return;
         if (portalSession.user.role === "doctor") {
+          if (openRescheduleBookingId) return;
           refreshDoctorAdminAll(false);
         } else {
           refreshClinicFeed(false, false);
