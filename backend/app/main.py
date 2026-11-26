@@ -33,7 +33,8 @@ ALLOWED_ORIGINS = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "*").split(",
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "")
 FROM_NAME = os.getenv("FROM_NAME", "Dr. Mina Sherif")
-APP_URL = os.getenv("APP_URL", "")
+DEFAULT_APP_URL = "https://drminasoliman-website.vercel.app"
+APP_URL = os.getenv("APP_URL", DEFAULT_APP_URL).strip().rstrip("/") or DEFAULT_APP_URL
 WEBHOOK_SECRET = os.getenv("SUPABASE_WEBHOOK_SECRET", "")
 
 logger = logging.getLogger("dr-mina-portal")
@@ -130,7 +131,7 @@ def send_email(to: str, subject: str, html: str) -> None:
  
 
 def portal_link(path: str = "") -> str:
-    return f"{APP_URL.rstrip('/')}/{path.lstrip('/')}" if APP_URL else "the patient portal"
+    return f"{APP_URL}/{path.lstrip('/')}"
 
 
 def profile_for(user_id: str | None) -> dict[str, Any] | None:
