@@ -95,7 +95,6 @@
       line-height: 1.5;
       min-height: 100vh;
       overflow-x: hidden;
-      overscroll-behavior-y: contain;
       -webkit-overflow-scrolling: touch;
       -webkit-text-size-adjust: 100%;
       transition: background-color 0.25s ease, color 0.25s ease;
@@ -2151,16 +2150,16 @@
       min-height: 100%;
       height: auto !important;
       overflow-x: hidden;
-      overflow-y: visible !important;
+      overflow-y: auto;
       touch-action: pan-y;
     }
 
     html {
-      overflow-y: scroll !important;
+      overflow-y: auto;
     }
 
     body.portal-locked {
-      overflow-y: visible !important;
+      overflow-y: auto;
     }
 
     img,
