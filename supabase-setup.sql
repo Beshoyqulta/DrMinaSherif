@@ -22,11 +22,35 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users for each row execute procedure public.handle_new_user();
 
 create table if not exists public.emotion_logs (
-  id text primary key, user_id uuid not null references public.profiles(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(), user_id uuid not null references public.profiles(id) on delete cascade,
   logged_at bigint not null, core text not null, secondary text not null, tertiary text not null,
   color text, intensity integer, co_emotions jsonb not null default '[]', somatic jsonb not null default '[]',
   triggers jsonb not null default '[]', note text not null default '', created_at timestamptz not null default now()
 );
+
+-- Migrate older installations whose emotion_logs.id was text. Existing legacy
+-- IDs are replaced with UUIDs; the log contents themselves are preserved.
+do $$
+declare existing_id_type text;
+begin
+  select data_type into existing_id_type
+  from information_schema.columns
+  where table_schema = 'public' and table_name = 'emotion_logs' and column_name = 'id';
+
+  if existing_id_type = 'text' then
+    alter table public.emotion_logs
+      alter column id type uuid using (
+        case
+          when id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+            then id::uuid
+          else gen_random_uuid()
+        end
+      );
+  end if;
+
+  alter table public.emotion_logs alter column id set default gen_random_uuid();
+end $$;
+
 create table if not exists public.patient_state (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   meditation_minutes integer not null default 0, care_plan jsonb not null default '{}', updated_at timestamptz not null default now()

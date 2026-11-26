@@ -3770,10 +3770,26 @@
       return /^#[0-9a-fA-F]{3,8}$/.test(s) ? s : "#3B8A63";
     }
 
+    function isUuid(value) {
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+    }
+
+    function createUuid() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        const v = c === "x" ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
     function sanitizeLogEntry(item) {
       if (!item || typeof item !== "object") return null;
-      const id = String(item.id || ("log-" + Date.now()));
-      if (id.startsWith("demo-")) return null;
+      const rawId = String(item.id || "");
+      if (rawId.startsWith("demo-")) return null;
+      const id = isUuid(item.id) ? String(item.id) : createUuid();
       const core = String(item.core || "").trim();
       const secondary = String(item.secondary || "").trim();
       const tertiary = String(item.tertiary || "").trim();
@@ -3816,12 +3832,22 @@
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed && typeof parsed === "object") {
+            const migratedIds = new Map();
             const cleanLogs = Array.isArray(parsed.logs)
-              ? parsed.logs.map(sanitizeLogEntry).filter(Boolean)
+              ? parsed.logs.map(item => {
+                  const oldId = String(item && item.id || "");
+                  const clean = sanitizeLogEntry(item);
+                  if (clean && oldId && oldId !== clean.id) migratedIds.set(oldId, clean.id);
+                  return clean;
+                }).filter(Boolean)
               : [];
             parsed.logs = cleanLogs;
-            parsed.pendingUpsertIds = Array.isArray(parsed.pendingUpsertIds) ? parsed.pendingUpsertIds.map(String) : [];
-            parsed.pendingDeleteIds = Array.isArray(parsed.pendingDeleteIds) ? parsed.pendingDeleteIds.map(String) : [];
+            parsed.pendingUpsertIds = Array.isArray(parsed.pendingUpsertIds)
+              ? parsed.pendingUpsertIds.map(id => migratedIds.get(String(id)) || String(id)).filter(isUuid)
+              : [];
+            parsed.pendingDeleteIds = Array.isArray(parsed.pendingDeleteIds)
+              ? parsed.pendingDeleteIds.map(id => migratedIds.get(String(id)) || String(id)).filter(isUuid)
+              : [];
             parsed.stateDirty = Boolean(parsed.stateDirty);
             appState = Object.assign(createEmptyAppState(currentTheme), parsed);
           }
@@ -4194,7 +4220,7 @@
       const noteEl = document.getElementById("input-journal-note");
 
       const newEntry = {
-        id: "log-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+        id: createUuid(),
         timestamp: Date.now(),
         core: core.name,
         secondary: sec.name,
@@ -6936,15 +6962,8 @@
       if (!cleanBody || !portalSession || !portalSession.user) return null;
       const cfg = getPortalConfig();
       const isDoc = portalSession.user.role === "doctor";
-      const messageId = window.crypto && typeof window.crypto.randomUUID === "function"
-        ? window.crypto.randomUUID()
-        : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-            const r = Math.random() * 16 | 0;
-            const v = c === "x" ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-          });
       const msgRow = {
-        id: messageId,
+        id: createUuid(),
         patient_id: patientId,
         sender_id: portalSession.user.id,
         sender_role: isDoc ? "doctor" : "patient",
