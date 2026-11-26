@@ -2151,6 +2151,7 @@
       min-height: 100%;
       overflow-x: hidden;
       overflow-y: auto;
+      touch-action: pan-y;
     }
 
     img,
@@ -2163,6 +2164,7 @@
     .portal-gate {
       overflow-y: auto;
       align-items: flex-start;
+      touch-action: pan-y;
     }
 
     .portal-card {
@@ -2170,8 +2172,13 @@
     }
 
     @media (max-width: 720px) {
+      body {
+        font-size: 14px;
+      }
+
       .app-shell {
         padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+        overflow-x: clip;
       }
 
       .main-content {
@@ -2189,8 +2196,18 @@
         align-items: flex-start;
       }
 
+      .header-top {
+        flex-direction: column;
+      }
+
+      .brand-group {
+        width: 100%;
+      }
+
       .header-actions {
         width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .header-actions .icon-btn {
@@ -2202,6 +2219,15 @@
       .feed-post-card,
       .sanctuary-stage {
         padding: 13px;
+      }
+
+      .card-header {
+        flex-direction: column;
+      }
+
+      .card-header > button,
+      .card-header > .secondary-btn {
+        width: 100%;
       }
 
       .channel-composer {
@@ -2269,6 +2295,37 @@
 
       .portal-card .brand-subtitle {
         font-size: 0.64rem;
+      }
+
+      .portal-card input,
+      .portal-card select,
+      .portal-card textarea,
+      .portal-input,
+      .clinical-textarea {
+        width: 100%;
+        max-width: 100%;
+        font-size: 16px;
+      }
+
+      .portal-alert {
+        overflow-wrap: anywhere;
+      }
+
+      .doctor-action-row,
+      .feed-filter-row,
+      .portal-quick-strip {
+        width: 100%;
+      }
+
+      .doctor-action-row > button,
+      .doctor-action-row > a {
+        flex: 1 1 100%;
+        text-align: center;
+      }
+
+      .feed-filter-row .emotion-chip {
+        flex: 1 1 auto;
+        text-align: center;
       }
     }
 
