@@ -40,6 +40,11 @@ def doctor_new_appointment(doctor_name: str, patient_name: str, patient_email: s
     return "New appointment request from a patient", shell(f'<p>Hello {escape(doctor_name or "Doctor")},</p><p>A patient submitted a new appointment request.</p>{details}<p>{button("Review Appointment", url.rstrip("/") + "/admin_panel")}</p><p>Dr Mina Soliman’s Patient Portal</p>')
 
 
+def doctor_appointment_cancelled(doctor_name: str, patient_name: str, patient_email: str, session_type: str, appointment_date: str, appointment_time: str, url: str):
+    details = f'<div style="background:#fff1ef;border-left:4px solid #d9534f;padding:14px 16px;margin:20px 0;"><strong>Patient:</strong> {escape(patient_name or "A patient")}<br /><strong>Email:</strong> {escape(patient_email or "unknown email")}<br /><strong>Session:</strong> {escape(session_type or "Appointment")}<br /><strong>Appointment time:</strong> {escape(appointment_date or "—")} {escape(appointment_time or "")}</div>'
+    return "Patient cancelled an appointment", shell(f'<p>Hello {escape(doctor_name or "Doctor")},</p><p>A patient has cancelled an appointment.</p>{details}<p>{button("Open Doctor Panel", url.rstrip("/") + "/admin_panel")}</p><p>Dr Mina Soliman’s Patient Portal</p>')
+
+
 def patient_login(patient_name: str, patient_email: str, url: str):
     return "A patient signed in to the portal", shell(f'<p>Hello Doctor,</p><p><strong>{escape(patient_name or "A patient")}</strong> ({escape(patient_email or "unknown email")}) has just signed in to the Patient Portal.</p><p>{button("Open Doctor Panel", url.rstrip("/") + "/admin_panel")}</p><p>Dr Mina Soliman’s Patient Portal</p>')
 

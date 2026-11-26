@@ -21,6 +21,7 @@ from app.email_templates import (
     clinic_broadcast,
     doctor_message,
     doctor_new_appointment,
+    doctor_appointment_cancelled,
     doctor_new_message,
     doctor_new_signup,
     appointment_reminder,
@@ -267,6 +268,19 @@ def templated_booking_update(record: dict[str, Any], old_record: dict[str, Any] 
     if old_record and all(record.get(field) == old_record.get(field) for field in ("status", "confirmed_date", "confirmed_time")):
         return
     patient = profile_for(record.get("patient_id"))
+    if record.get("status") == "cancelled":
+        for doctor in doctor_email_recipients():
+            subject, html = doctor_appointment_cancelled(
+                doctor.get("full_name", ""),
+                (patient or {}).get("full_name", record.get("patient_name", "")),
+                (patient or {}).get("email", record.get("patient_email", "")),
+                record.get("session_type", ""),
+                record.get("confirmed_date") or record.get("preferred_date", ""),
+                record.get("confirmed_time") or record.get("preferred_time", ""),
+                portal_link(),
+            )
+            send_email(doctor.get("email", ""), subject, html)
+        return
     if patient:
         subject, html = appointment_updated(
             patient.get("full_name", ""),
