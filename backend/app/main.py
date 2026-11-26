@@ -4,6 +4,7 @@ import os
 import logging
 from datetime import date, datetime
 from html import escape
+from email.utils import parseaddr
 from typing import Any
 from uuid import UUID
 
@@ -11,7 +12,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
+from sendgrid.helpers.mail import Email, Mail
 from supabase import Client, create_client
 from app.email_templates import (
     appointment_request,
@@ -105,14 +106,23 @@ def send_email(to: str, subject: str, html: str) -> None:
         logger.warning("Email skipped: SendGrid API key, sender, or recipient is missing")
         return
     logger.info("Sending email subject=%r recipient=%s from=%s", subject, to, FROM_EMAIL)
-    message = Mail(from_email=FROM_EMAIL, to_emails=to, subject=subject, html_content=html)
+    sender_name, sender_address = parseaddr(FROM_EMAIL)
+    sender_address = sender_address or FROM_EMAIL.strip()
+    sender = Email(sender_address, sender_name or None)
+    message = Mail(from_email=sender, to_emails=to, subject=subject, html_content=html)
     try:
         response = SendGridAPIClient(SENDGRID_API_KEY).send(message)
         if response.status_code >= 400:
             raise RuntimeError(f"SendGrid rejected email with HTTP {response.status_code}: {response.body}")
         logger.info("SendGrid accepted message recipient=%s status=%s", to, response.status_code)
-    except Exception:
-        logger.exception("SendGrid rejected message subject=%r recipient=%s", subject, to)
+    except Exception as exc:
+        provider_error = str(getattr(exc, "body", "") or "")
+        logger.exception(
+            "SendGrid rejected message subject=%r recipient=%s provider_response=%s",
+            subject,
+            to,
+            provider_error,
+        )
         # Email delivery must not make a Supabase webhook fail. The database
         # change is already committed; the failure is recorded in Render logs
         # for retry/diagnosis without causing webhook retry storms.
