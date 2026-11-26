@@ -139,6 +139,18 @@ def profile_for(user_id: str | None) -> dict[str, Any] | None:
     return result.data if result.data else None
 
 
+def approved_doctors() -> list[dict[str, Any]]:
+    """Return notification recipients from the approved doctor profiles in Supabase."""
+    result = (
+        admin_client.table("profiles")
+        .select("email,full_name")
+        .eq("role", "doctor")
+        .eq("status", "approved")
+        .execute()
+    )
+    return [doctor for doctor in (result.data or []) if str(doctor.get("email") or "").strip()]
+
+
 def notify_profile_approval(record: dict[str, Any], old_record: dict[str, Any] | None) -> None:
     if record.get("status") == "approved" and (not old_record or old_record.get("status") != "approved"):
         subject, html = approved(record.get("full_name", ""), portal_link())
@@ -157,8 +169,7 @@ def notify_new_message(record: dict[str, Any]) -> None:
             name = patient.get("full_name") or "there"
             send_email(patient.get("email", ""), "You have a new message from Dr. Mina Soliman", f"<p>Hello {escape(name)},</p><p>Dr. Mina Soliman sent you a new private portal message.</p><p><a href=\"{portal_link()}\">Open your message channel</a></p>")
     else:
-        doctors = admin_client.table("profiles").select("email,full_name").eq("role", "doctor").eq("status", "approved").execute().data or []
-        for doctor in doctors:
+        for doctor in approved_doctors():
             send_email(doctor.get("email", ""), "A patient sent you a new private message", f"<p>Hello {escape(doctor.get('full_name') or 'Doctor')},</p><p>A patient sent a new private portal message.</p><p><a href=\"{portal_link()}\">Open the doctor portal</a></p>")
 
 
@@ -172,8 +183,7 @@ def notify_new_broadcast(record: dict[str, Any]) -> None:
 
 def notify_booking_update(record: dict[str, Any], old_record: dict[str, Any] | None, event: str) -> None:
     if event == "INSERT":
-        doctors = admin_client.table("profiles").select("email,full_name").eq("role", "doctor").eq("status", "approved").execute().data or []
-        for doctor in doctors:
+        for doctor in approved_doctors():
             send_email(doctor.get("email", ""), "A patient requested an appointment", f"<p>Hello {escape(doctor.get('full_name') or 'Doctor')},</p><p>A patient submitted a new appointment request.</p><p><a href=\"{portal_link()}\">Open the doctor portal</a></p>")
         return
     if old_record and record.get("status") == old_record.get("status"):
@@ -203,8 +213,7 @@ def templated_new_message(record: dict[str, Any]) -> None:
             subject, html = doctor_message(patient.get("full_name", ""), portal_link())
             send_email(patient.get("email", ""), subject, html)
         return
-    doctors = admin_client.table("profiles").select("email,full_name").eq("role", "doctor").eq("status", "approved").execute().data or []
-    for doctor in doctors:
+    for doctor in approved_doctors():
         subject, html = patient_message(doctor.get("full_name", ""), portal_link())
         send_email(doctor.get("email", ""), subject, html)
 
@@ -218,8 +227,7 @@ def templated_broadcast(record: dict[str, Any]) -> None:
 
 def templated_booking_update(record: dict[str, Any], old_record: dict[str, Any] | None, event: str) -> None:
     if event == "INSERT":
-        doctors = admin_client.table("profiles").select("email,full_name").eq("role", "doctor").eq("status", "approved").execute().data or []
-        for doctor in doctors:
+        for doctor in approved_doctors():
             subject, html = appointment_request(doctor.get("full_name", ""), portal_link())
             send_email(doctor.get("email", ""), subject, html)
         return
@@ -232,8 +240,7 @@ def templated_booking_update(record: dict[str, Any], old_record: dict[str, Any] 
 
 
 def notify_doctors_of_patient_login(patient: dict[str, Any]) -> None:
-    doctors = admin_client.table("profiles").select("email,full_name").eq("role", "doctor").eq("status", "approved").execute().data or []
-    for doctor in doctors:
+    for doctor in approved_doctors():
         subject, html = patient_login(patient.get("full_name", ""), patient.get("email", ""), portal_link())
         send_email(doctor.get("email", ""), subject, html)
 
