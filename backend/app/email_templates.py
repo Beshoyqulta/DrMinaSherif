@@ -16,7 +16,7 @@ def welcome(name: str, url: str):
 
 
 def approved(name: str, url: str):
-    return "Your Dr Mina Soliman Patient Portal access is approved", shell(f'<p>Hello {escape(name or "there")},</p><p>Dr Mina Soliman has approved your access to the Patient Portal.</p><div style="background:#eef6f1;border-left:4px solid #2e6f5e;padding:14px 16px;margin:20px 0;">Your private portal access is now active.</div><p>{button("Open Patient Portal", url)}</p><p>Please remember that the private channel is for non-urgent messages only.</p><p>Warmly,<br />Dr Mina Soliman</p>')
+    return "Your Dr Mina Soliman Patient Portal access is approved", shell(f'<p>Hello {escape(name or "there")},</p><p>Dr Mina Soliman has approved your access to the Patient Portal.</p><div style="background:#eef6f1;border-left:4px solid #2e6f5e;padding:14px 16px;margin:20px 0;">Your private portal access is now active.</div><p>{button("Open Patient Portal", url)}</p><p>Please remember that the private channel is for non-urgent messages only.</p><p>Kind regards,<br />Dr Mina Soliman</p>')
 
 
 def doctor_message(name: str, url: str):

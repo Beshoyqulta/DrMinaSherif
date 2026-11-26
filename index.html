@@ -1995,9 +1995,15 @@
 
     .channel-composer textarea {
       flex: 1;
+      min-width: 0;
+      width: 100%;
       resize: vertical;
       min-height: 46px;
       max-height: 120px;
+    }
+
+    .channel-split-grid > * {
+      min-width: 0;
     }
 
     .channel-split-grid {
@@ -2250,11 +2256,17 @@
       }
 
       .channel-composer {
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
         align-items: stretch;
       }
 
       .channel-composer .primary-btn {
+        width: 100%;
+      }
+
+      .channel-composer textarea {
+        min-width: 0;
         width: 100%;
       }
 
@@ -6917,8 +6929,15 @@
       if (!cleanBody || !portalSession || !portalSession.user) return null;
       const cfg = getPortalConfig();
       const isDoc = portalSession.user.role === "doctor";
+      const messageId = window.crypto && typeof window.crypto.randomUUID === "function"
+        ? window.crypto.randomUUID()
+        : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            const v = c === "x" ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+          });
       const msgRow = {
-        id: "msg-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        id: messageId,
         patient_id: patientId,
         sender_id: portalSession.user.id,
         sender_role: isDoc ? "doctor" : "patient",
