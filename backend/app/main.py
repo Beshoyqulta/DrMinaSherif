@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import os
 import logging
-import smtplib
 from datetime import date, datetime
-from email.message import EmailMessage
 from html import escape
 from typing import Any
 from uuid import UUID
@@ -12,6 +10,8 @@ from uuid import UUID
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 from supabase import Client, create_client
 from app.email_templates import (
     appointment_request,
@@ -28,10 +28,7 @@ SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
 SUPABASE_ANON_KEY = os.environ["SUPABASE_ANON_KEY"]
 SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 ALLOWED_ORIGINS = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "*").split(",") if x.strip()]
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "")
 APP_URL = os.getenv("APP_URL", "")
 WEBHOOK_SECRET = os.getenv("SUPABASE_WEBHOOK_SECRET", "")
@@ -104,32 +101,22 @@ class BroadcastIn(BaseModel):
 
 
 def send_email(to: str, subject: str, html: str) -> None:
-    if not SMTP_USERNAME or not SMTP_PASSWORD or not FROM_EMAIL or not to:
-        logger.warning("Email skipped: SMTP credentials, sender, or recipient is missing")
+    if not SENDGRID_API_KEY or not FROM_EMAIL or not to:
+        logger.warning("Email skipped: SendGrid API key, sender, or recipient is missing")
         return
     logger.info("Sending email subject=%r recipient=%s from=%s", subject, to, FROM_EMAIL)
-    message = EmailMessage()
-    message["Subject"] = subject
-    message["From"] = FROM_EMAIL
-    message["To"] = to
-    message.set_content("This message contains HTML. Please open it in an HTML-capable email client.")
-    message.add_alternative(html, subtype="html")
+    message = Mail(from_email=FROM_EMAIL, to_emails=to, subject=subject, html_content=html)
     try:
-        if SMTP_PORT == 465:
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
-                smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
-                smtp.send_message(message)
-        else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
-                smtp.ehlo()
-                smtp.starttls()
-                smtp.ehlo()
-                smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
-                smtp.send_message(message)
-        logger.info("Email provider accepted message recipient=%s", to)
+        response = SendGridAPIClient(SENDGRID_API_KEY).send(message)
+        if response.status_code >= 400:
+            raise RuntimeError(f"SendGrid rejected email with HTTP {response.status_code}: {response.body}")
+        logger.info("SendGrid accepted message recipient=%s status=%s", to, response.status_code)
     except Exception:
-        logger.exception("SMTP provider rejected message subject=%r recipient=%s", subject, to)
-        raise
+        logger.exception("SendGrid rejected message subject=%r recipient=%s", subject, to)
+        # Email delivery must not make a Supabase webhook fail. The database
+        # change is already committed; the failure is recorded in Render logs
+        # for retry/diagnosis without causing webhook retry storms.
+        return
  
 
 def portal_link(path: str = "") -> str:
